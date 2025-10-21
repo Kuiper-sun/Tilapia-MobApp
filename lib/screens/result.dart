@@ -1,14 +1,24 @@
+
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 
 class ResultScreen extends StatelessWidget {
   final String imagePath;
   final String status;
+  final String eyePrediction;
+  final String gillPrediction;
+  final double eyeScore;
+  final double gillScore;
 
   const ResultScreen({
     super.key,
     required this.imagePath,
     required this.status,
+    this.eyePrediction = 'Not Found',
+    this.gillPrediction = 'Not Found',
+    this.eyeScore = 0.0,
+    this.gillScore = 0.0,
   });
 
   Color getStatusColor() {
@@ -19,6 +29,10 @@ class ResultScreen extends StatelessWidget {
         return const Color(0xFFD66A4E);
       case 'Old':
         return const Color(0xFF735E59);
+      case 'No Fish Detected':
+        return Colors.blueGrey;
+      case 'Incomplete Detection':
+        return Colors.orange.shade700; // A warning color
       default:
         return Colors.grey;
     }
@@ -32,8 +46,13 @@ class ResultScreen extends StatelessWidget {
         return 'This fish isn’t at its best. Use with caution.';
       case 'Old':
         return 'This tilapia appears old. Avoid consuming it.';
+      case 'No Fish Detected':
+        return 'No tilapia eye and gill was detected. Please use a clear, close-up photo of the fish.';
+
+      case 'Incomplete Detection':
+        return 'Warning: Both the eye and gill must be clearly visible for a complete analysis. Please try again with a better photo.';
       default:
-        return '';
+        return 'Could not determine freshness. Please try again with a clearer image showing the eye and gill.';
     }
   }
 
@@ -41,6 +60,11 @@ class ResultScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = getStatusColor();
     final description = getStatusDescription();
+
+    final String eyeScorePercent = eyeScore > 0 ? '(${(eyeScore * 100).toStringAsFixed(1)}%)' : '';
+    final String gillScorePercent = gillScore > 0 ? '(${(gillScore * 100).toStringAsFixed(1)}%)' : '';
+
+    final bool showDetails = status == 'Fresh' || status == 'Not Fresh' || status == 'Old';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -58,7 +82,7 @@ class ResultScreen extends StatelessWidget {
                     top: 16,
                     left: 16,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
@@ -66,7 +90,7 @@ class ResultScreen extends StatelessWidget {
                     top: 16,
                     right: 16,
                     child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: const Icon(Icons.close, color: Colors.white, size: 30),
                       onPressed: () =>
                           Navigator.popUntil(context, ModalRoute.withName('/')),
                     ),
@@ -75,83 +99,126 @@ class ResultScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              flex: 3,
+              flex: 5,
               child: Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                width: double.infinity,
                 decoration: const BoxDecoration(
                   color: Color(0xFFF8F8F8),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'The tilapia is',
-                      style: TextStyle(
-                        fontFamily: 'CovikSans',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Color(0xFF103937),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      width:
-                          double.infinity, // Full width container for green box
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(40),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        status,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        showDetails ? 'The tilapia is' : 'Analysis Result',
                         style: const TextStyle(
                           fontFamily: 'CovikSans',
                           fontWeight: FontWeight.bold,
-                          fontSize: 22,
-                          color: Color(0xFFF8F8F8),
+                          fontSize: 18,
+                          color: Color(0xFF103937),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Align(
-                      alignment: Alignment.center, // Center the white box
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        width:
-                            MediaQuery.of(context).size.width *
-                            0.85, // Same width as the green box
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                        width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          color: color,
+                          borderRadius: BorderRadius.circular(40),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Good to go?',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              description,
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.normal,
-                                fontSize: 16,
-                                color: Color(0xFF103937),
-                              ),
-                            ),
-                          ],
+                        alignment: Alignment.center,
+                        child: Text(
+                          status,
+                          style: const TextStyle(
+                            fontFamily: 'CovikSans',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                            color: Color(0xFFF8F8F8),
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+                      if (showDetails)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Analysis Details', style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 16)),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Eye Prediction:', style: TextStyle(fontSize: 16, fontFamily: 'Inter')),
+                                  Text('$eyePrediction $eyeScorePercent', style: const TextStyle(fontSize: 16, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Gill Prediction:', style: TextStyle(fontSize: 16, fontFamily: 'Inter')),
+                                  Text('$gillPrediction $gillScorePercent', style: const TextStyle(fontSize: 16, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                              Text(description, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, color: Color(0xFF103937))),
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            description,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 16,
+                              color: Color(0xFF103937),
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 24),
+
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0A3932),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.popUntil(context, ModalRoute.withName('/camera'));
+                        },
+                        child: const Text(
+                          'Analyze Another Fish',
+                          style: TextStyle(
+                            fontFamily: 'CovikSans',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
